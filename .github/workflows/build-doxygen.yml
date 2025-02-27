@@ -1,0 +1,40 @@
+name: Build Doyxgen
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Doxygen version to build
+        required: true
+
+jobs:
+  build-doxygen:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get -y install bison flex
+
+      - name: Download & extract source code
+        run: |
+          tag="Release_$(echo ${{ github.event.inputs.version }} | sed 's/\./_/g')"
+          wget https://github.com/doxygen/doxygen/releases/download/$tag/doxygen-${{ github.event.inputs.version }}.src.tar.gz
+          tar -xf doxygen*.src.tar.gz
+
+      - name: Build doxygen
+        run: |
+          cd doxygen-${{ github.event.inputs.version }}
+          mkdir build
+          cd build
+          cmake -G "Unix Makefiles" ..
+          make -j4
+          cp -p bin/doxygen ../../doxygen-${{ github.event.inputs.version }}-linux
+          cd ../..
+          bzip2 doxygen-${{ github.event.inputs.version }}-linux
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: doxygen-${{ github.event.inputs.version }}-linux
+          path: doxygen-${{ github.event.inputs.version }}-linux.bz2
